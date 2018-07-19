@@ -1,5 +1,8 @@
 import Introduction from '../components/Introduction.jsx';
 
+import CurrencyWidgetUI from 'us-forms-system/lib/js/definitions/currency';
+import CurrentOrPastDateUI from 'us-forms-system/lib/js/definitions/currentOrPastDate';
+
 const formConfig = {
   title: 'Kitchen Sink demo for US Forms System',
   subTitle: 'Form USFS-KS1',
@@ -21,6 +24,35 @@ const formConfig = {
   },
 
   chapters: {
+
+    TESTSECTION: {
+      title: 'I am a test section',
+      pages: {
+        SPECIAL: {
+          path: 'financial/BORKEN',
+          title: 'Monthly Income Sources',
+          schema: {
+            type: 'object',
+            required: [  ],
+            properties: {
+              employed: { type: 'boolean' },
+              jobStartDate: { type: 'string' },
+              monthlyWages: { type: 'string' },
+              jobCount: { type: 'number' },
+              otherMonthlyIncome: { type: 'string' }
+            }
+          },
+          uiSchema: {
+            employed: { 'ui:title': 'I am employed' },
+            monthlyWages: CurrencyWidgetUI('Monthly wages'),
+            jobCount: { 'ui:title': 'Number of jobs' },
+            jobStartDate: CurrentOrPastDateUI('Job start date'),
+            otherMonthlyIncome: CurrencyWidgetUI('Other monthly income')
+          }
+        }
+      }
+    },
+
     firstSection: {
       title: 'Name and Contact Information',
       pages: {
@@ -84,12 +116,9 @@ const formConfig = {
                 minLength: 7,
                 maxLength: 30
               },
-              github: {
-                type: 'string'
-              },
-              twitter: {
-                type: 'string'
-              }
+              newsletter: { type: 'boolean' },
+              twitter: { type: 'string' },
+              facebook: { type: 'string' }
             },
             required: [ 'email' ]
           },
@@ -100,8 +129,9 @@ const formConfig = {
                 pattern: 'Please enter a valid email address'
               }
             },
-            github: { 'ui:title': 'Github' },
-            twitter: { 'ui:title': 'Twitter'}
+            newsletter: { 'ui:title': 'Subscribe to the weekly newsletter' },
+            twitter: { 'ui:title': 'Twitter' },
+            facebook: { 'ui:title': 'Facebook' }
           }
         }
       }
@@ -139,7 +169,30 @@ const formConfig = {
             addr2: { 'ui:title': 'Address Line 2' },
             city: { 'ui:title': 'City' },
             state: { 'ui:title': 'State' },
-            Zip: { 'ui:title': 'Zip' }
+            zip: { 'ui:title': 'Zip' }
+          }
+        }
+      }
+    },
+    thirdSection: {
+      title: 'Financial Information',
+      pages: {
+        incomeSources: {
+          path: 'financial/income',
+          title: 'Monthly Income Sources',
+          schema: {
+            type: 'object',
+            required: [ 'income' ],
+            properties: {
+              monthlyWages: { type: 'string' },
+              jobCount: { type: 'number' },
+              otherIncome: { type: 'string' }
+            }
+          },
+          uiSchema: {
+            monthlyWages: CurrencyWidgetUI('Monthly wages'),
+            jobCount: { 'ui:title': 'Number of jobs' },
+            otherIncome: CurrencyWidgetUI('Other monthly income')
           }
         }
       }
