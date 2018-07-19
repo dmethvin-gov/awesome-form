@@ -45,7 +45,7 @@ const formConfig = {
               },
               phone: {
                 type: 'string',
-                pattern: '^[\\d.-()\\s]+$',
+                pattern: '^[\\d.()\\s-]+$',
                 minLength: 10,
                 maxLength: 20
               }
