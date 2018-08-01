@@ -36,7 +36,12 @@ const formConfig = {
             required: [  ],
             properties: {
               employed: { type: 'boolean' },
-              jobStartDate: { type: 'string' },
+              'view:jobdate': {
+                type: 'object',
+                properties: {
+                  jobStartDate: { type: 'string' }
+                }
+              },
               monthlyWages: { type: 'string' },
               jobCount: { type: 'number' },
               otherMonthlyIncome: { type: 'string' }
@@ -46,7 +51,12 @@ const formConfig = {
             employed: { 'ui:title': 'I am employed' },
             monthlyWages: CurrencyWidgetUI('Monthly wages'),
             jobCount: { 'ui:title': 'Number of jobs' },
-            jobStartDate: CurrentOrPastDateUI('Job start date'),
+            'view:jobdate': {
+              jobStartDate: CurrentOrPastDateUI('Job start date'),
+              'ui:options': {
+                hideIf: (formData) => !formData.employed
+              }
+            },
             otherMonthlyIncome: CurrencyWidgetUI('Other monthly income')
           }
         }
