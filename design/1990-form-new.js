@@ -66,15 +66,14 @@ const widgets = {
     widget: 'RadioGroup',
     // RadioGroup copies defaults { widget: 'Radio', field } ?
     children: [
-          [ null, 'Radio', 'Semester', 'semester' ],
       { value: 'semester', label: 'Semester' },
       { value: 'quarter',  label: 'Quarter' },
       { value: 'clock',    label: 'Clock'  }
     ]
   },
   'FullName': {
-    widget: 'FieldGroupObject',
     field: 'fullName',
+    widget: 'FieldGroupObject',
     children: [
       {
         field: 'first',
@@ -94,19 +93,6 @@ const widgets = {
         label: 'Last Name',
         validation: { minLength: 2, maxLength: 50 }
       }
-    ]
-  },
-  'EducationType': {
-    widget: 'Select',
-    // Select widget copies { widget: 'Option' } to children ?
-    children: [
-      { value: 'college', label: 'College, university, or other ...' },
-      { value: 'correspondence', label: 'Correspondence' },
-      { value: 'apprenticeship', label: 'Apprenticeship or on-the-job training' },
-      { value: 'flightTraining', label: 'Vocational flight training' },
-      { value: 'testReimbursement', label: 'National test reimbursement ...' },
-      { value: 'licensingReimbursement', label: 'Licensing or certification test ... ' },
-      { value: 'tuitionTopUp', label: 'Tuition assistance top-up ...' }
     ]
   }
 };
@@ -232,7 +218,13 @@ const pages = [
         widget: 'FieldGroupObject',
         merge: true, // currentlyActiveDuty object is used in different places in the form
         children: [
-          [ 'yes', 'YesNo', 'Are you on active duty now?' ]
+          [ 'yes', 'YesNo', 'Are you on active duty now?' ],
+          {
+            field: 'onTerminalLeave',
+            widget: 'YesNo',
+            label: 'Are you on terminal leave now?',
+            showIf: 'currentlyActiveDuty.yes' // TODO: maybe a function instead?
+          }
         ]
       }
     ]
@@ -357,7 +349,21 @@ const pages = [
         required: [ 'name', 'type' ],
         children: [
           [ 'name', 'Text', 'Name of school, university, or training program' ],
-          [ 'type', 'EducationType', 'Type of education or training' ]
+          {
+            field: 'type',
+            widget: 'Select',
+            label: 'Type of education or training',
+            // Select widget copies { widget: 'Option' } to children ?
+            children: [
+              { value: 'college', label: 'College, university, or other ...' },
+              { value: 'correspondence', label: 'Correspondence' },
+              { value: 'apprenticeship', label: 'Apprenticeship or on-the-job training' },
+              { value: 'flightTraining', label: 'Vocational flight training' },
+              { value: 'testReimbursement', label: 'National test reimbursement ...' },
+              { value: 'licensingReimbursement', label: 'Licensing or certification test ... ' },
+              { value: 'tuitionTopUp', label: 'Tuition assistance top-up ...' }
+            ]
+          }
         ]
       },
       [ 'educationObjective', 'Textarea', 'Education or career goal ...' ],
@@ -447,11 +453,21 @@ const pages = [
         ]
       }
     ]
+  },
+  {
+    chapter: 'Personal Information',
+    widget: 'PageDisplayGroup',
+    label: 'Dependent information',
+    showIf: hasServiceBefore1977, // TODO: define showIf functions and args
+    children: [
+      [ 'married', 'YesNo', 'Are you currently married?' ],
+      [ 'haveDependents', 'YesNo', 'Do you have any dependents who fall into ...' ],
+      [ 'parentDependent', 'YesNo', 'Do you have a parent who is dependent ...' ]
+    ]
   }
 
 ];
 
-// TODO: where is onTerminalLeave??
 
 //-------------------------------------------------------------------------
 
