@@ -5,23 +5,29 @@
 //              name in submitted data; if null then no data stored locally or submitted
 // widget       string; Path to widget in project, or name of previously defined widget
 // label        string; HTML for label or title used in the widget
+// initialValue string or number; value to use on first display
+// initialValue function(fieldName, localData); function returning value to use
 // children     object; In grouping widgets, list of sub-widgets it contains
 // merge        true/false; In object widgets, merge data into an existing object w same name
 // validation   object; Validation rules passed to the widget
 // className    string; Class name(s) added to the HTML element
-// firstButton  string; In array widgets, HTML to use on the initial "create" button;
+// addFirstButton string; In array widgets, HTML to use on the initial "create" button;
 //              if not defined then the first element is shown but empty
-// addButton    string; In array widgets, HTML to use on the "add another" button
-// hidden       true/false; This field is hidden, not shown or validated but is submitted
+// addNextButton string; In array widgets, HTML to use on the "add another" button
 // showIf       'field1|field2'; This field displayed if at least one field is checked/non-empty
+// showIf       function(thisFieldName, localData); Displayed if function returns true
 // showUnless   'field1|field2'; This field displayed if at least one field is unchecked/empty
-//  (Note: data from non-shown fields are not submitted, contrast with hidden)
+//              (Data from non-shown fields are not submitted or validated)
 // required      [ 'field1', 'field2' ]; In a grouping widget, defines required child fields
 // requiredIf   'field1|field2'; This field required if at least one field is checked/non-empty
 // requiredUnless 'field1|field2'; This field required if at least one field is unchecked/empty
+// disabledIf   'field1|field2'; This field is disabled if at least one field is checked/non-empty
+// disabledUnless 'field1|field2'; This field disabled if at least one field is unchecked/empty
 // value        string; (initial) Value of the widget
-// submitAs     null or function(field, data/childFields) => string/object/null;
-//              Changes value returned for this field; null means do not submit a value
+// submitAs     null; // do not submit a value (only used locally)
+// submitAs     "name"; submit using the field name "name"
+// submitAs     function(fieldName, data/childFields) => string/object/null;
+//              (By default the value is submitted using the same name as `field`)
 //
 //-------------------------------------------------------------------------
 
@@ -106,7 +112,7 @@ const pages = [
     widget: 'PageDisplayGroup',
     children: [
       // Short (array) syntax, when widget defaults are sufficient
-      // [ fieldname, widget, label, value ]
+      // [ fieldname, widget, label, initialValue ]
       [ 'veteranFullName', 'FullName', 'Full Name' ],
       [ 'veteranSocialSecurityNumber', 'SSN', 'Social Security Number' ],
       [ 'veteranDateOfBirth', 'AdultBirthDate', 'Date of Birth' ],
@@ -151,6 +157,11 @@ const pages = [
     showIf: 'chapter33Checkbox',
     required: [ 'benefitsRelinquished' ],
     children: [
+      // Hidden field containing today's date (LOCAL TIME), see function above
+      [ 'benefitsRelinquishedDate', 'Hidden', '', () => {
+        const now = Date.now();
+        return now.getFullYear()+'-'+(now.getMonth()+1)+'-'+now.getDate();
+      }],
       {
         field: 'benefitsRelinquished',
         widget: 'RadioGroup',
@@ -162,13 +173,6 @@ const pages = [
           { value: 'chapter1606', label: 'Montgomery GI Bill Selected Reserve (MGIB-SR, Chapter 1606)' },
           { value: 'chapter1607', label: 'Reserve Educational Assistance Program (REAP, Chapter 1607)' }
         ]
-      },
-      {
-        // only sent if the page is shown, else all fields on page are skipped
-        field: 'benefitsRelinquishedDate',
-        widget: 'Date',
-        initialValue: 'TODAY',  // magic name to initialize
-        hidden: true
       }
     ]
   },
@@ -178,7 +182,7 @@ const pages = [
     // TODO define how  multi-page display works (check current code)
     widget: 'PageDisplayGroupArray',
     field: 'servicePeriods',
-    addButton: 'Add another service period',
+    addNextButton: 'Add another service period',
     required: [ 'serviceBranch', 'dateRange' ]
     children: [
       [ null, 'HTML', 'Please record all your periods of service' ],
@@ -211,8 +215,6 @@ const pages = [
     widget: 'PageDisplayGroup',
     children: [
       [ 'serviceAcademyGraduationYear', 'CurrentOrPastYear', 'If you received a commission ...' ],
-      // TODO: Is this only about ROTC service?
-      // https://github.com/department-of-veterans-affairs/vets-json-schema/blob/57cd75765d04f17af7e82ce3c58ccb628c412d33/src/common/definitions.js#L367
       {
         field: 'currentlyActiveDuty',
         widget: 'FieldGroupObject',
@@ -223,7 +225,7 @@ const pages = [
             field: 'onTerminalLeave',
             widget: 'YesNo',
             label: 'Are you on terminal leave now?',
-            showIf: 'currentlyActiveDuty.yes' // TODO: maybe a function instead?
+            showIf: 'currentlyActiveDuty.yes'
           }
         ]
       }
@@ -245,7 +247,8 @@ const pages = [
             field: 'rotcScholarshipAmounts',
             widget: 'FieldGroupArray',
             label: 'ROTC Scholarships',
-            addButton: 'Add another scholarship',
+            addFirstButton: 'Add a scholarship',
+            addNextButton: 'Add another scholarship',
             children: [
               [ 'year', 'PastOrPresentYear', 'Year Scholarship was received' ],
               [ 'amount', 'DollarAmount', 'Scholarship Amount' ]
@@ -392,7 +395,6 @@ const pages = [
           { value: 'phone', label: 'Phone' }
         ]
       },
-      // TODO: Define the PostalAddress widget
       [ 'veteranAddress', 'PostalAddress', 'Address' ],
       {
         widget: 'Fieldset',
@@ -458,7 +460,7 @@ const pages = [
     chapter: 'Personal Information',
     widget: 'PageDisplayGroup',
     label: 'Dependent information',
-    showIf: hasServiceBefore1977, // TODO: define showIf functions and args
+    showIf: hasServiceBefore1977, // Here, passed (undefined, localData) => boolean
     children: [
       [ 'married', 'YesNo', 'Are you currently married?' ],
       [ 'haveDependents', 'YesNo', 'Do you have any dependents who fall into ...' ],
