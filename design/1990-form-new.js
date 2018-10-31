@@ -5,71 +5,68 @@
 //              name in submitted data; if null then no data stored locally or submitted
 // widget       string; Path to widget in project, or name of previously defined widget
 // label        string; HTML for label or title used in the widget
-// initialValue string or number; value to use on first display
-// initialValue function(fieldName, localData); function returning value to use
+// value        string or number; value to use on initial display
+// value        [ "fnRtnValue", args ]; function called to get initial value
 // children     object; In grouping widgets, list of sub-widgets it contains
 // merge        true/false; In object widgets, merge data into an existing object w same name
-// validation   object; Validation rules passed to the widget
-// className    string; Class name(s) added to the HTML element
-// addFirstButton string; In array widgets, HTML to use on the initial "create" button;
+// validation   array-of-string or array-of-array-of-string; Validation rules passed to the widget
+// className    string; Class name(s) added to some? element in the widget
+// firstButton  string; In array widgets, label to use on the initial "create" button;
 //              if not defined then the first element is shown but empty
-// addNextButton string; In array widgets, HTML to use on the "add another" button
-// showIf       'field1|field2'; This field displayed if at least one field is checked/non-empty
-// showIf       function(thisFieldName, localData); Displayed if function returns true
-// showUnless   'field1|field2'; This field displayed if at least one field is unchecked/empty
-//              (Data from non-shown fields are not submitted or validated)
+// nextButton   string; In array widgets, label to use on the "add another" button
+// showIf       [ "fnRtnBoolean", "fieldNames" ]; Displayed if function returns true
+//              (also requiredIf, disabledIf, readOnlyIf, submitIf; generically "fieldIf")
 // required      [ 'field1', 'field2' ]; In a grouping widget, defines required child fields
-// requiredIf   'field1|field2'; This field required if at least one field is checked/non-empty
-// requiredUnless 'field1|field2'; This field required if at least one field is unchecked/empty
-// disabledIf   'field1|field2'; This field is disabled if at least one field is checked/non-empty
-// disabledUnless 'field1|field2'; This field disabled if at least one field is unchecked/empty
-// value        string; (initial) Value of the widget
-// submitAs     null; // do not submit a value (only used locally)
-// submitAs     "name"; submit using the field name "name"
-// submitAs     function(fieldName, data/childFields) => string/object/null;
-//              (By default the value is submitted using the same name as `field`)
+// submitAs     [ "fn", args ]; submit as the name-value pair returned (merged to form?)
 //
 //-------------------------------------------------------------------------
 
-// Person should be at least 18 years old; used below
-var MaxAdultBirthDate = new Date();
-MaxAdultBirthDate.setFullYear(MaxAdultBirthDate.getFullYear()-18);
-
 // Widget definitions
 const widgets = {
-  // Widgets available; search paths in order if not defined explicitly
+  // Available form extensions; search in order if not defined explicitly
+  // Search adds "widget/", "validation/", "fieldIf/", etc.
   '$PATHS': {
-    'LOCAL': './widgets',
-    'SOMEFORMLIB': './node_modules/some-form-lib/widgets',
-    'USFS': './node_modules/us-forms-system/dist/widgets'
+    'LOCAL': './js/extensions',
+    'SOMEFORMLIB': './node_modules/some-form-lib/dist',
+    'USFS': './node_modules/us-forms-system/dist/lib'
   },
   // Widget definitions can change default options
   'SSN': {
     widget: '$USFS/SSN',
-    label: 'Social Security Number'
+    label: 'Social Security Number',
+    validation: [ "required" ]
   },
   'Date': {
     widget: '$USFS/Date',
-    format: 'mm/dd/yyyy'  // for display
+    format: 'mm/dd/yyyy'  // e.g., for display in errors
   },
   // Widgets can use already-defined widgets
   'AdultBirthDate': {
     widget: 'Date',
     label: 'Date of Birth',
-    validation: {
-      minDate: [
-        '1900-01-01',
-        'Date of birth must be after ${minDate}'
-      ],
-      maxDate: [
-        MaxAdultBirthDate, // Converted to ISO8601 string
-        'Date of birth must be no later than ${maxDate}'
-      ]
-    }
+    validation: [
+      [ "required" ],
+      [ "dateBetween", "1900-01-01", "-17 years", "Date of birth must be between ${1} and ${2}" ]
+    ],
+  },
+  "Text-0-80": {
+    widget: "Text",
+    validation: [
+      [ "maxLength", 80, "Please enter at least ${1} characters" ]
+    ]
+  },
+  "Text-1-80": {
+    widget: "Text",
+    validation: [
+      // TODO: Merge validations so that we could base off Text-0-80?
+      [ "required" ],
+      [ "maxLength",  80, "Please enter at least ${1} characters" ]
+    ]
   },
   // Widgets can pull from multiple widgets
   'TrainingHoursType': {
     widget: 'RadioGroup',
+    validation: [ "required" ],
     // RadioGroup copies defaults { widget: 'Radio', field } ?
     children: [
       { value: 'semester', label: 'Semester' },
@@ -78,27 +75,14 @@ const widgets = {
     ]
   },
   'FullName': {
+    // Widget can define a default field name
     field: 'fullName',
     widget: 'FieldGroupObject',
     children: [
-      {
-        field: 'first',
-        widget: 'Text',
-        label: "First Name",
-        validation: { minLength: 1, maxLength: 50 }
-      },
-      {
-        field: 'middle',
-        widget: 'Text',
-        label: 'Middle Name',
-        validation: { maxLength: 50 }
-      },
-      {
-        field: 'last',
-        widget: 'Text',
-        label: 'Last Name',
-        validation: { minLength: 2, maxLength: 50 }
-      }
+      // Fields can use a shorthand array syntax
+      [ "first", "Text-1-80" "First Name" ],
+      [ "middle", "Text-0-80", "Middle Name" ],
+      [ "last", "Text-1-80", "Last Name" ],
     ]
   }
 };
@@ -128,20 +112,20 @@ const pages = [
       {
         widget: 'Fieldset',
         label: 'You may be eligible for more than 1 education benefit ...',
-        validation: {
-          // FieldGroup isn't focusable so this validates on page navigation?
-          errorUnless: [
-            'chapter33Checkbox|chapter30Checkbox|chapter1606Checkbox|chapter32Checkbox',
-            'You must select at least one benefit.'
-          ]
-        },
+        validation: [
+          // "anyChecked" is a showIf-style function
+          [ "validIf", "anyChecked" [
+            "chapter33Checkbox", "chapter30Checkbox", "chapter1606Checkbox", "chapter32Checkbox"
+          ], "You must select at least one benefit." ]
+        ],
         children: [
-          [ 'chapter33Checkbox', 'Checkbox', 'Post-9/11 GI Bill (Chapter 33) ...' ],
           {
-            widget: 'HTML',
-            showIf: 'chapter33Checkbox',
-            className: 'expand-under',
-            label: 'When you choose to apply for your Post-9/11 benefit, ...'
+            field: "chapter33Checkbox",
+            widget: "Checkbox",
+            label: "Post-9/11 GI Bill (Chapter 33) ...",
+            children: [
+              [ "", "ExpandUnderText", "When you choose to apply for your Post-9/11 benefit, ..." ]
+            ]
           },
           [ 'chapter30Checkbox', 'Checkbox','Montgomery GI Bill (MGIB-AD, Chapter 30) ...' ],
           [ 'chapter1606Checkbox', 'Checkbox','Montgomery GI Bill Selected Reserve (MGIB-SR, Chapter 1606) ...' ],
@@ -154,8 +138,7 @@ const pages = [
     chapter: 'Benefits Eligibility',
     label: 'Benefits Relinquishment',
     widget: 'PageDisplayGroup',
-    showIf: 'chapter33Checkbox',
-    required: [ 'benefitsRelinquished' ],
+    showIf: [ "isChecked", "chapter33Checkbox" ],
     children: [
       // Hidden field containing today's date (LOCAL TIME), see function above
       [ 'benefitsRelinquishedDate', 'Hidden', '', () => {
@@ -166,6 +149,7 @@ const pages = [
         field: 'benefitsRelinquished',
         widget: 'RadioGroup',
         label: 'Because you chose to apply for your Post-9/11 benefit, ...',
+        validation: [ "required" ],
         // RadioGroup copies defaults { widget: 'Radio', field: 'benefitsRelinquished' }
         children: [
           { value: 'chapter32', label: 'I\'m only eligible for the post-9/11 GI Bill' },
@@ -182,29 +166,21 @@ const pages = [
     // TODO define how  multi-page display works (check current code)
     widget: 'PageDisplayGroupArray',
     field: 'servicePeriods',
-    addNextButton: 'Add another service period',
-    required: [ 'serviceBranch', 'dateRange' ]
+    nextButton: 'Add another service period',
     children: [
-      [ null, 'HTML', 'Please record all your periods of service' ],
-      [ 'serviceBranch','Text', 'Branch of Service' ],
+      [ null, 'Subhead', 'Please record all your periods of service' ],
+      [ 'serviceBranch','Text-1-80', 'Branch of Service' ],
       [ 'serviceStatus', 'Text', 'Type of service ...' ],
-      [ 'dateRange', 'PastOrPresentMonthYearRange', 'Service start and end date' ],
-      [ 'applyPeriodToSelected', 'Checkbox', 'Apply this service period to the benefit I’m applying for.' ],
+      [ 'dateRange', 'ServiceMonthYearRange', 'Service start and end date' ],
       {
-        widget: 'FieldGroupObject',
-        displayUnless: 'applyPeriodToSelected',
-        className: 'display-under',
+        field: "applyPeriodToSelected",
+        widget: "Checkbox",
+        label: "Apply this service period to the benefit I’m applying for.",
+        checked: true,
+        showChildrenWhen: false,
         children: [
-          {
-            field: 'benefitsApplyTo',
-            widget: 'Textarea',
-            requiredUnless: 'applyPeriodToSelected',
-            label: 'Please explain how you’d like this service period applied.'
-          },
-          {
-            widget: 'HTML',
-            label: 'A single period of service may not be applied toward more than one benefit. ...'
-          }
+          [ "benefitsApplyTo", "Textarea", "Please explain how you’d like this service period applied." ],
+          [ null, "BodyText", "A single period of service may not be applied toward more than one benefit. ..." ]
         ]
       }
     ]
@@ -216,16 +192,16 @@ const pages = [
     children: [
       [ 'serviceAcademyGraduationYear', 'CurrentOrPastYear', 'If you received a commission ...' ],
       {
-        field: 'currentlyActiveDuty',
-        widget: 'FieldGroupObject',
-        merge: true, // currentlyActiveDuty object is used in different places in the form
+        field: "currentlyActiveDuty",
+        widget: "FieldGroupObject",
         children: [
-          [ 'yes', 'YesNo', 'Are you on active duty now?' ],
           {
-            field: 'onTerminalLeave',
-            widget: 'YesNo',
-            label: 'Are you on terminal leave now?',
-            showIf: 'currentlyActiveDuty.yes'
+            field: "yes",
+            widget: "YesNo",
+            showChildrenWhen: "Yes",
+            children: [
+              [ "onTerminalLeave", "YesNo", "Are you on terminal leave now?" ]
+            ]
           }
         ]
       }
@@ -240,15 +216,15 @@ const pages = [
       [ 'seniorRotc', 'YesNo', 'Were you commissioned as a result of senior ROTC?' ],
       {
         widget: 'FieldGroupObject',
-        displayIf: 'seniorRotc'
+        displayIf: [ "isYes", "seniorRotc" ]
         children: [
           [ 'commissionYear', 'PastOrPresentYear', 'Commission Year' ],
           {
             field: 'rotcScholarshipAmounts',
             widget: 'FieldGroupArray',
             label: 'ROTC Scholarships',
-            addFirstButton: 'Add a scholarship',
-            addNextButton: 'Add another scholarship',
+            firstButton: 'Add a scholarship',
+            nextButton: 'Add another scholarship',
             children: [
               [ 'year', 'PastOrPresentYear', 'Year Scholarship was received' ],
               [ 'amount', 'DollarAmount', 'Scholarship Amount' ]
@@ -263,23 +239,20 @@ const pages = [
     label: 'Contributions',
     widget: 'PageDisplayGroup',
     children: [
-      [ null, 'HTML', 'Select all that apply:' ],
+      [ null, 'Subhead', 'Select all that apply:' ],
       [ 'civilianBenefitsAssistance', 'Checkbox', 'I am receiving benefits from the U.S. Government ...' ],
       [ 'additionalContributions', 'Checkbox', 'I made contributions (up to $600) to increase the amount ...' ],
       [ 'activeDutyKicker', 'Checkbox', 'I qualify for an Active Duty Kicker ...' ],
       [ 'reserveKicker', 'Checkbox', 'I qualify for a Reserve Kicker ...' ],
       [ 'activeDutyRepay', 'Checkbox', 'I have a period of service that the Department of Defense ...' ],
       {
-        field: 'activeDutyRepay',
+        field: "",
         widget: 'Checkbox',
         label: 'I have a period of service that the Department of Defense ...'
-        submitAs: null
+        children: [
+          [ "activeDutyRepayingPeriod", "PastOrPresentDateRange", "Enter service period" ]
+        ]
       },
-      {
-        field: 'activeDutyRepayingPeriod',
-        widget: 'PastOrPresentDateRange',
-        displayIf: 'activeDutyRepay'
-      }
     ]
   },
   {
@@ -288,15 +261,14 @@ const pages = [
     widget: 'PageDisplayGroup',
     children: [
       [ 'highSchoolOrGedCompletionDate', 'PastOrCurrentMonthYear', 'When did you earn your high school diploma ...' ],
-      [ null, 'HTML', 'Please list any courses or training programs ...' ],
+      [ null, 'Subhead', 'Please list any courses or training programs ...' ],
       {
         field: 'postHighSchoolTrainings',
         widget: 'FieldGroupArray',
         label: 'Education after high school',
         addButton: 'Add another training',
-        required: [ 'name', 'hoursType' ],
         children: [
-          [ 'name', 'Text', 'Name of college, university or other training provider' ],
+          [ 'name', 'Text-1-80', 'Name of college, university or other training provider' ],
           [ 'city', 'Text', 'City' ],
           [ 'state', 'StateSelect', 'State' ],
           [ 'dateRange', 'PastOrCurrentMonthYearRange', 'Dates attended' ],
@@ -323,7 +295,7 @@ const pages = [
       {
         field: 'nonMilitaryJobs',
         widget: 'FieldGroupArray',
-        displayIf: 'nonMilitaryJob',
+        showIf: ["isYes", 'nonMilitaryJob' ],
         addButton: 'Add another employment period',
         children: [
           {
@@ -349,13 +321,13 @@ const pages = [
       {
         field: 'educationProgram',
         widget: 'FieldGroupObject',
-        required: [ 'name', 'type' ],
         children: [
-          [ 'name', 'Text', 'Name of school, university, or training program' ],
+          [ 'name', 'Text-1-80', 'Name of school, university, or training program' ],
           {
             field: 'type',
             widget: 'Select',
             label: 'Type of education or training',
+            validation: [ "required" ],
             // Select widget copies { widget: 'Option' } to children ?
             children: [
               { value: 'college', label: 'College, university, or other ...' },
@@ -372,23 +344,22 @@ const pages = [
       [ 'educationObjective', 'Textarea', 'Education or career goal ...' ],
       [ 'educationStartDate', 'Date', 'Date your training began or will begin' ],
       {
-        field: 'currentlyActiveDuty',
-        widget: 'FieldGroupObject',
-        merge: true, // currentlyActiveDuty object is used in different places in the form
-        children: [
-          [ 'nonVaAssistance', 'YesNo', 'Are you getting, or do you expect to get any money ...' ]
-        ]
+        field: "nonVaAssistance",
+        widget: "YesNo",
+        label: "Are you getting, or do you expect to get any money ...",
+        submitAs: [ "mergeTo", "currentlyActiveDuty" ]
+      }
     ]
   },
   {
     chapter: 'Personal Information',
     widget: 'PageDisplayGroup',
     label: 'Contact Information',
-    required: [ 'preferredContactMethod' ],
     children: [
       {
         field: 'preferredContactMethod',
         widget: 'RadioGroup',
+        validation: [ "required" ],
         children: [
           { value: 'mail', label: 'Mail' },
           { value: 'email' label: 'Email' },
@@ -399,6 +370,7 @@ const pages = [
       {
         widget: 'Fieldset',
         label: 'Other contact information',
+        // TODO: convert to function-call format?
         required: [ 'email', 'homePhone' ],
         children: [
           [ 'email', 'EmailWithConfirm', 'Email address' ],
@@ -414,6 +386,7 @@ const pages = [
     label: 'Secondary contact',
     children: [
       {
+        field: "secondaryContact",
         widget: 'FieldGroupObject',
         label: 'This person should know where you can be reached ...',
         children: [
@@ -423,8 +396,7 @@ const pages = [
           {
             field: 'address',
             widget: 'PostalAddress',
-            displayUnless: 'sameAddress',
-            label: ''
+            showIf: [ "isChecked", "sameAddress" ]
           }
         ]
       }
@@ -435,7 +407,7 @@ const pages = [
     widget: 'PageDisplayGroup',
     label: 'Direct deposit',
     children: [
-      [ null, 'HTML', 'VA makes payments only through direct deposit ...' ],
+      [ null, 'Subhead', 'VA makes payments only through direct deposit ...' ],
       {
         field: 'bankAccount',
         widget: 'FieldGroupObject',
@@ -460,7 +432,8 @@ const pages = [
     chapter: 'Personal Information',
     widget: 'PageDisplayGroup',
     label: 'Dependent information',
-    showIf: hasServiceBefore1977, // Here, passed (undefined, localData) => boolean
+    // TODO: Passed the array of serviceHistory records
+    showIf: [ "hasServiceBefore1977", "serviceHistory" ],
     children: [
       [ 'married', 'YesNo', 'Are you currently married?' ],
       [ 'haveDependents', 'YesNo', 'Do you have any dependents who fall into ...' ],
