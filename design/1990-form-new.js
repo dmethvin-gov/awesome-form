@@ -52,7 +52,11 @@ const widgets = {
   "Text-0-80": {
     widget: "Text",
     validation: [
-      [ "maxLength", 80, "Please enter at least ${1} characters" ]
+      {
+        validator: "maxLength",
+        maxLength: 80,
+        message: "Please do not enter more than ${maxLength} characters"
+      }
     ]
   },
   "Text-1-80": {
@@ -84,6 +88,22 @@ const widgets = {
       [ "middle", "Text-0-80", "Middle Name" ],
       [ "last", "Text-1-80", "Last Name" ],
     ]
+  }
+};
+const validators = {
+  '$PATHS': {
+    'LOCAL': './js/extensions',
+    'SOMEFORMLIB': './node_modules/some-form-lib/dist',
+    'USFS': './node_modules/us-forms-system/dist/lib'
+  },
+  'DateSince1990': {
+    validation: [
+      {
+        validator: "DateSince",
+        date: "1990-01-01",
+        message: "Date cannot be before 1990"
+      }
+    ],
   }
 };
 
