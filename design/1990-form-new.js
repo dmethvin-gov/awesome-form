@@ -52,6 +52,7 @@ const widgets = {
   "Text-0-80": {
     widget: "Text",
     validation: [
+      // Could we also allow this method? not sure how to do both without confusion
       {
         validator: "maxLength",
         maxLength: 80,
@@ -161,10 +162,8 @@ const pages = [
     showIf: [ "isChecked", "chapter33Checkbox" ],
     children: [
       // Hidden field containing today's date (LOCAL TIME), see function above
-      [ 'benefitsRelinquishedDate', 'Hidden', '', () => {
-        const now = Date.now();
-        return now.getFullYear()+'-'+(now.getMonth()+1)+'-'+now.getDate();
-      }],
+      // (Use label as the data type? Use initialValue as the arg to it?)
+      [ 'benefitsRelinquishedDate', 'Hidden', 'DATE', ''],
       {
         field: 'benefitsRelinquished',
         widget: 'RadioGroup',
@@ -196,8 +195,8 @@ const pages = [
         field: "applyPeriodToSelected",
         widget: "Checkbox",
         label: "Apply this service period to the benefit I’m applying for.",
-        checked: true,
-        showChildrenWhen: false,
+        value: true,
+        showChildrenValue: false,
         children: [
           [ "benefitsApplyTo", "Textarea", "Please explain how you’d like this service period applied." ],
           [ null, "BodyText", "A single period of service may not be applied toward more than one benefit. ..." ]
@@ -236,7 +235,7 @@ const pages = [
       [ 'seniorRotc', 'YesNo', 'Were you commissioned as a result of senior ROTC?' ],
       {
         widget: 'FieldGroupObject',
-        displayIf: [ "isYes", "seniorRotc" ]
+        showIf: [ "isYes", "seniorRotc" ]
         children: [
           [ 'commissionYear', 'PastOrPresentYear', 'Commission Year' ],
           {
